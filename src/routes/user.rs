@@ -7,7 +7,7 @@ use crate::handlers::user;
 
 pub fn main() -> Router {
     Router::new()
-        .route("/register", get( user::register ))
+        .route("/register", post( user::register ))
         .route("/login", post( user::login ))
         .route("/refresh", get( user::refresh ))
         .route("/logout", post( user::logout ))
