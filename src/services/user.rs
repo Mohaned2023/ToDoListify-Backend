@@ -7,9 +7,9 @@ use argon2::{
     Argon2
 };
 use cookie::Cookie;
-use sha2::{Digest, Sha256};
 use sqlx::{Pool, Postgres};
 use tracing::{error, info};
+use uuid::Uuid;
 use crate::{
     error::AppError, 
     modules::user::{
@@ -70,21 +70,16 @@ pub async fn create(
 }
 
 pub async fn create_session(
-    username: &str, 
-    email: &str,
+    username: &str,
     user_id: i32,
     pool: &Pool<Postgres>
 ) -> Result<String, AppError> {
-    let session_format = format!("username={}$email={}", username, email);
-    let mut hasher = Sha256::new();
-    hasher.update(session_format.as_bytes());
-    let hashed = hasher.finalize();
-    let session = format!("{:x}", hashed);
+    let session = Uuid::new_v4().to_string();
     let rows = sqlx::query(
         r#"
             INSERT INTO sessions (user_id, data)
             VALUES ($1, $2)
-            ON CONFLICT (user_id) DO NOTHING;;
+            ON CONFLICT (user_id) DO NOTHING;
         "#
     )
         .bind(&user_id)

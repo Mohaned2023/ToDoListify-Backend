@@ -24,7 +24,6 @@ pub async fn register(
         Ok(user) => {
             let session_result = services::user::create_session(
                 &user.username, 
-                &user.email, 
                 user.id, 
                 &pool
             ).await;
