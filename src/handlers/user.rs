@@ -1,5 +1,5 @@
 use axum::{
-    http::StatusCode,
+    http::{HeaderMap, HeaderValue, StatusCode},
     response::IntoResponse,
     Json
 };
@@ -21,7 +21,27 @@ pub async fn register(
     let pool = get_pool().await;
     let create_result = services::user::create(create_dto, &pool).await;
     match create_result {
-        Ok(user) => return (StatusCode::CREATED, Json(user)).into_response(),
+        Ok(user) => {
+            let session_result = services::user::create_session(
+                &user.username, 
+                &user.email, 
+                user.id, 
+                &pool
+            ).await;
+            match session_result {
+                Ok(session) => {
+                    let mut header = HeaderMap::new();
+                    header.insert(
+                        axum::http::header::SET_COOKIE,
+                        HeaderValue::from_str(
+                            &services::user::build_cookie(session)
+                        ).unwrap()
+                    );
+                    return (StatusCode::CREATED, header, Json(user)).into_response()
+                }
+                Err(e) => return e.into_response()
+            }
+        },
         Err(e) => return e.into_response()
     }
 }

@@ -12,7 +12,8 @@ use serde_json::json;
 pub enum AppError {
     ValidationError(String),
     UserFound,
-    InternalServer
+    InternalServer,
+    CanNotCreeateSession
 }
 
 impl IntoResponse for AppError {
@@ -20,7 +21,8 @@ impl IntoResponse for AppError {
         let (status, message) = match self {
             AppError::ValidationError(err) => (StatusCode::BAD_REQUEST, err),
             AppError::UserFound => (StatusCode::FOUND, "User already registered!".to_string()),
-            AppError::InternalServer => (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error!".to_string())
+            AppError::InternalServer => (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error!".to_string()),
+            AppError::CanNotCreeateSession => (StatusCode::INTERNAL_SERVER_ERROR, "Can NOT create the session!".to_string())
         };
         (
             status,

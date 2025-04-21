@@ -6,7 +6,10 @@ use argon2::{
     PasswordHasher,
     Argon2
 };
+use cookie::Cookie;
+use sha2::{Digest, Sha256};
 use sqlx::{Pool, Postgres};
+use tracing::{error, info};
 use crate::{
     error::AppError, 
     modules::user::{
@@ -55,9 +58,59 @@ pub async fn create(
                         return Err(AppError::UserFound);
                     }
                 }
+                error!("{:#?}", db_err);
                 return Err(AppError::InternalServer);
             }
-            _ => return Err(AppError::InternalServer),
+            _ => {
+                error!("{:#?}", e);
+                return Err(AppError::InternalServer)
+            },
         }
     }
 }
+
+pub async fn create_session(
+    username: &str, 
+    email: &str,
+    user_id: i32,
+    pool: &Pool<Postgres>
+) -> Result<String, AppError> {
+    let session_format = format!("username={}$email={}", username, email);
+    let mut hasher = Sha256::new();
+    hasher.update(session_format.as_bytes());
+    let hashed = hasher.finalize();
+    let session = format!("{:x}", hashed);
+    let rows = sqlx::query(
+        r#"
+            INSERT INTO sessions (user_id, data)
+            VALUES ($1, $2)
+            ON CONFLICT (user_id) DO NOTHING;;
+        "#
+    )
+        .bind(&user_id)
+        .bind(&session)
+        .execute(pool)
+        .await;
+    match rows {
+        Ok(r) => {
+            if r.rows_affected() > 0 {
+                info!("create session for {}", username);
+                return Ok(session);
+            }
+            error!("Can NOT create the session for {}", username);
+            return Err(AppError::CanNotCreeateSession);
+        }
+        Err(e) => {
+            error!("{:#?}", e);
+            return Err(AppError::InternalServer);
+        }
+    }
+}
+
+pub fn build_cookie( session: String ) -> String {
+    return Cookie::build(("session", session))
+        .path("/")
+        .http_only(true)
+        .secure(true)
+        .max_age(cookie::time::Duration::days(7)).to_string();
+} 
