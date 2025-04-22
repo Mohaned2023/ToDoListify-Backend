@@ -8,6 +8,8 @@ pub struct User {
     pub name: String,
     pub username: String,
     pub email: String,
+    #[serde(skip)]
+    pub password: String,
     pub create_at: Option<String>,
     pub update_at: Option<String>,
 }
@@ -33,8 +35,17 @@ pub struct CreateDto {
     pub confirmation: String,
 }
 
+#[derive(Validate, Deserialize)]
+pub struct LoginDto {
+    #[validate(custom(function = "username_validate"))]
+    pub username: String,
+
+    #[validate(custom(function = "password_validate"))]
+    pub password: String
+}
+
 fn username_validate(username: &str) -> Result<(), ValidationError> {
-    if username.len() < 8 || username.len() > 512 {
+    if username.len() < 3 || username.len() > 255 {
         return Err(ValidationError::new("min=8 && max=512"));
     }
     let pattren: Regex = Regex::new(r"([a-z0-9_]+)").unwrap();

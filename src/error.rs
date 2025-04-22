@@ -13,7 +13,9 @@ pub enum AppError {
     ValidationError(String),
     UserFound,
     InternalServer,
-    CanNotCreeateSession
+    CanNotCreeateSession,
+    NotFoundUser,
+    Unauthorized,
 }
 
 impl IntoResponse for AppError {
@@ -22,7 +24,9 @@ impl IntoResponse for AppError {
             AppError::ValidationError(err) => (StatusCode::BAD_REQUEST, err),
             AppError::UserFound => (StatusCode::FOUND, "User already registered!".to_string()),
             AppError::InternalServer => (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error!".to_string()),
-            AppError::CanNotCreeateSession => (StatusCode::INTERNAL_SERVER_ERROR, "Can NOT create the session!".to_string())
+            AppError::CanNotCreeateSession => (StatusCode::INTERNAL_SERVER_ERROR, "Can NOT create the session!".to_string()),
+            AppError::NotFoundUser => (StatusCode::NOT_FOUND, "User NOT found!".to_string()),
+            AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized!".to_string())
         };
         (
             status,

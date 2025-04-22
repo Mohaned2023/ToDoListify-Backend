@@ -3,8 +3,9 @@ use argon2::{
         rand_core::OsRng, 
         SaltString
     }, 
-    PasswordHasher,
-    Argon2
+    Argon2, 
+    PasswordHash, 
+    PasswordHasher
 };
 use cookie::Cookie;
 use sqlx::{Pool, Postgres};
@@ -13,7 +14,8 @@ use uuid::Uuid;
 use crate::{
     error::AppError, 
     modules::user::{
-        CreateDto,
+        CreateDto, 
+        LoginDto, 
         User
     }
 };
@@ -79,7 +81,8 @@ pub async fn create_session(
         r#"
             INSERT INTO sessions (user_id, data)
             VALUES ($1, $2)
-            ON CONFLICT (user_id) DO NOTHING;
+            ON CONFLICT (user_id) DO UPDATE
+            SET data = EXCLUDED.data
         "#
     )
         .bind(&user_id)
@@ -98,6 +101,49 @@ pub async fn create_session(
         Err(e) => {
             error!("{:#?}", e);
             return Err(AppError::InternalServer);
+        }
+    }
+}
+
+pub async fn login(
+    login_dto: LoginDto,
+    pool: &Pool<Postgres>
+) -> Result<User, AppError> {
+    let user = sqlx::query_as::<_, User> (
+        r#"
+            SELECT 
+                id, 
+                name, 
+                email, 
+                username, 
+                password,
+                to_char(create_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as create_at, 
+                to_char(update_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as update_at
+            FROM users
+            WHERE 
+                username = $1 
+        "#,
+    )
+        .bind(&login_dto.username)
+        .bind(&login_dto.password)
+        .fetch_one(pool)
+        .await;
+    match user {
+        Ok(data) => {
+            if let Ok(parsed_hash) = PasswordHash::new(&data.password) {
+                let result = parsed_hash.verify_password(&[&Argon2::default()], login_dto.password);
+                if result.is_ok() {
+                    return Ok(data);
+                }
+            }
+            return Err(AppError::Unauthorized);
+        },
+        Err(e) => match e {
+            sqlx::Error::RowNotFound => return Err(AppError::NotFoundUser),
+            other => {
+                error!("{:#?}", other);
+                return Err(AppError::InternalServer)
+            }
         }
     }
 }

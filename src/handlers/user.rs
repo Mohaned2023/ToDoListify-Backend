@@ -1,5 +1,9 @@
 use axum::{
-    http::{HeaderMap, HeaderValue, StatusCode},
+    http::{
+        HeaderMap,
+        HeaderValue, 
+        StatusCode
+    },
     response::IntoResponse,
     Json
 };
@@ -45,7 +49,38 @@ pub async fn register(
     }
 }
 
-pub async fn login() {}
+pub async fn login(
+    Json(login_dto): Json<modules::user::LoginDto>
+) -> impl IntoResponse {
+    if let Err(err) = login_dto.validate() {
+        return error::AppError::ValidationError(err.to_string()).into_response();
+    }
+    let pool = get_pool().await;
+    let login_result = services::user::login(login_dto, &pool).await;
+    match login_result {
+        Ok(user) => {
+            let session_result = services::user::create_session(
+                &user.username,
+                user.id,
+                &pool
+            ).await;
+            match session_result {
+                Ok(session) => {
+                    let mut header = HeaderMap::new();
+                    header.insert(
+                        axum::http::header::SET_COOKIE,
+                        HeaderValue::from_str(
+                            &services::user::build_cookie(session)
+                        ).unwrap()
+                    );
+                    return (StatusCode::OK, header, Json(user)).into_response();
+                },
+                Err(e) => return e.into_response()
+            }
+        },
+        Err(e) => return e.into_response()
+    }
+}
 
 pub async fn refresh() {}
 
