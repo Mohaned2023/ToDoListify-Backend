@@ -6,7 +6,7 @@ use axum::{
 use axum_extra::extract::cookie::CookieJar;
 use crate::{
     error::AppError,
-    services::user::get_user_by_session,
+    services::auth::get_user_by_session,
     db::get_pool
 };
 

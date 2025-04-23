@@ -27,7 +27,7 @@ pub async fn register(
     let create_result = services::user::create(create_dto, &pool).await;
     match create_result {
         Ok(user) => {
-            let session_result = services::user::create_session(
+            let session_result = services::auth::create_session(
                 &user.username, 
                 user.id, 
                 &pool
@@ -38,7 +38,7 @@ pub async fn register(
                     header.insert(
                         axum::http::header::SET_COOKIE,
                         HeaderValue::from_str(
-                            &services::user::build_cookie(session)
+                            &services::auth::build_cookie(session)
                         ).unwrap()
                     );
                     return (StatusCode::CREATED, header, Json(user)).into_response()
@@ -60,7 +60,7 @@ pub async fn login(
     let login_result = services::user::login(login_dto, &pool).await;
     match login_result {
         Ok(user) => {
-            let session_result = services::user::create_session(
+            let session_result = services::auth::create_session(
                 &user.username,
                 user.id,
                 &pool
@@ -71,7 +71,7 @@ pub async fn login(
                     header.insert(
                         axum::http::header::SET_COOKIE,
                         HeaderValue::from_str(
-                            &services::user::build_cookie(session)
+                            &services::auth::build_cookie(session)
                         ).unwrap()
                     );
                     return (StatusCode::OK, header, Json(user)).into_response();
@@ -86,7 +86,7 @@ pub async fn login(
 pub async fn refresh(
     Extension(user): Extension<modules::user::User>
 ) -> impl IntoResponse {
-    let create_session_result = services::user::create_session(
+    let create_session_result = services::auth::create_session(
         &user.username,
         user.id, 
         &get_pool().await
@@ -97,7 +97,7 @@ pub async fn refresh(
             header.insert(
                 axum::http::header::SET_COOKIE,
                 HeaderValue::from_str(
-                    &services::user::build_cookie(session)
+                    &services::auth::build_cookie(session)
                 ).unwrap()
             );
             return (StatusCode::OK, header, Json(user)).into_response();
