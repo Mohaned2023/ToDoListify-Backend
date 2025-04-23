@@ -2,7 +2,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, Clone)]
 pub struct User {
     pub id: i32,
     pub name: String,

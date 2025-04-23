@@ -8,7 +8,7 @@ use axum::{
 };
 use serde_json::json;
 
-
+#[derive(PartialEq)]
 pub enum AppError {
     ValidationError(String),
     UserFound,

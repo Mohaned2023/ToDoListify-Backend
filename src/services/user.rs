@@ -148,10 +148,48 @@ pub async fn login(
     }
 }
 
+pub async fn get_user_by_session(
+    session: String,
+    pool: &Pool<Postgres>
+) -> Result<User, AppError> {
+    let user = sqlx::query_as::<_, User>(r#"
+        SELECT 
+            id, 
+            name, 
+            email, 
+            username, 
+            password,
+            to_char(create_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as create_at, 
+            to_char(update_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as update_at
+        FROM users 
+        WHERE
+            users.id = (
+                SELECT user_id FROM sessions
+                WHERE 
+                    sessions.data = $1 AND 
+                    sessions.expires_at - CURRENT_TIMESTAMP > INTERVAL '0 days'
+                LIMIT 1
+            );
+    "#)
+        .bind(&session)
+        .fetch_one(pool)
+        .await;
+    match user {
+        Ok(data) => return Ok(data),
+        Err(err) => match err {
+            sqlx::Error::RowNotFound => return Err(AppError::NotFoundUser),
+            other => {
+                error!("{:#?}", other);
+                return Err(AppError::InternalServer);
+            }
+        }
+    };
+}
+
+
 pub fn build_cookie( session: String ) -> String {
     return Cookie::build(("session", session))
         .path("/")
         .http_only(true)
-        .secure(true)
         .max_age(cookie::time::Duration::days(7)).to_string();
 } 
