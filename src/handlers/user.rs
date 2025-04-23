@@ -3,7 +3,10 @@ use axum::{
         HeaderMap,
         HeaderValue, 
         StatusCode
-    }, response::IntoResponse, Extension, Json
+    }, 
+    response::IntoResponse, 
+    Extension, 
+    Json
 };
 use validator::Validate;
 use crate::{
@@ -80,7 +83,28 @@ pub async fn login(
     }
 }
 
-pub async fn refresh() {}
+pub async fn refresh(
+    Extension(user): Extension<modules::user::User>
+) -> impl IntoResponse {
+    let create_session_result = services::user::create_session(
+        &user.username,
+        user.id, 
+        &get_pool().await
+    ).await;
+    match create_session_result {
+        Ok(session) => {
+            let mut header = HeaderMap::new();
+            header.insert(
+                axum::http::header::SET_COOKIE,
+                HeaderValue::from_str(
+                    &services::user::build_cookie(session)
+                ).unwrap()
+            );
+            return (StatusCode::OK, header, Json(user)).into_response();
+        }
+        Err(e) => return e.into_response()
+    }
+}
 
 pub async fn logout() {}
 
