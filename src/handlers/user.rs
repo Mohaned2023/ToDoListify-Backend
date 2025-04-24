@@ -106,7 +106,27 @@ pub async fn refresh(
     }
 }
 
-pub async fn logout() {}
+pub async fn logout(
+    Extension(user): Extension<modules::user::User>
+) -> impl IntoResponse { 
+    let delete_session_result = services::auth::delete_session(
+        user.id,
+        &get_pool().await
+    ).await;
+    match delete_session_result {
+        Ok(_) => {
+            let mut header = HeaderMap::new();
+            header.insert(
+                axum::http::header::SET_COOKIE,
+                HeaderValue::from_str(
+                    &services::auth::build_deleted_cookie()
+                ).unwrap()
+            );
+            return (StatusCode::OK, header).into_response();
+        },
+        Err(e) => return e.into_response()
+    }
+}
 
 pub async fn update_information() {}
 

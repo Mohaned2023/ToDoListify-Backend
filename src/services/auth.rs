@@ -85,9 +85,41 @@ pub async fn get_user_by_session(
     };
 }
 
+pub async fn delete_session(
+    user_id: i32,
+    pool: &Pool<Postgres>
+) -> Result<(), AppError> {
+    let result = sqlx::query(r#"
+        DELETE FROM sessions
+        WHERE user_id = $1
+    "#)
+        .bind(user_id)
+        .execute(pool)
+        .await;
+    match result {
+        Ok(data) => {
+            if data.rows_affected() > 0 {
+                return Ok(());
+            }
+            return Err(AppError::NotFoundUser);
+        }
+        Err(e) => {
+            error!("{:#?}", e);
+            return Err(AppError::InternalServer);
+        }
+    }
+}
+
 pub fn build_cookie( session: String ) -> String {
     return Cookie::build(("session", session))
         .path("/")
         .http_only(true)
         .max_age(cookie::time::Duration::days(7)).to_string();
 } 
+
+pub fn build_deleted_cookie() -> String {
+    return Cookie::build(("session", ""))
+        .path("/")
+        .http_only(true)
+        .max_age(cookie::time::Duration::seconds(0)).to_string();
+}
