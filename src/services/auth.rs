@@ -22,7 +22,9 @@ pub async fn create_session(
             INSERT INTO sessions (user_id, data)
             VALUES ($1, $2)
             ON CONFLICT (user_id) DO UPDATE
-            SET data = EXCLUDED.data
+            SET 
+                data = EXCLUDED.data,
+                expires_at = CURRENT_TIMESTAMP + INTERVAL '7 days'
         "#
     )
         .bind(&user_id)
