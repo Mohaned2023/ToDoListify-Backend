@@ -15,6 +15,7 @@ use crate::{
         CreateDto, 
         LoginDto, 
         UpdateInformationDto, 
+        UpdatePasswordDto, 
         User
     }
 };
@@ -178,6 +179,53 @@ pub async fn update_information(
                 error!("{:#?}", e);
                 return Err(AppError::InternalServer)
             },
+        }
+    }
+}
+
+pub async fn update_password(
+    update_pass_dto: UpdatePasswordDto,
+    user: User,
+    pool: &Pool<Postgres>
+) -> Result<(), AppError> {
+    if let Ok(parsed_hash) = PasswordHash::new(&user.password) {
+        let result = parsed_hash
+            .verify_password(&[&Argon2::default()], update_pass_dto.old_password);
+        if result.is_err() {
+            return Err(AppError::Unauthorized);
+        }
+    }
+    let salt = SaltString::generate(&mut OsRng);
+    let hash = Argon2::default()
+        .hash_password(
+            &update_pass_dto.password.as_bytes(),
+            &salt
+        )
+        .unwrap();
+    let result = sqlx::query(r#"
+        UPDATE users
+        SET
+            password  = $1,
+            salt      = $2,
+            update_at = CURRENT_TIMESTAMP
+        WHERE
+            id = $3
+    "#)
+        .bind(hash.to_string())
+        .bind(salt.to_string())
+        .bind(user.id)
+        .execute(pool)
+        .await;
+    match result {
+        Ok(data) => {
+            if data.rows_affected() > 0 {
+                return Ok(());
+            }
+            return Err(AppError::NotFoundUser);
+        }
+        Err(e) => {
+            error!("{:#?}", e);
+            return Err(AppError::InternalServer);
         }
     }
 }

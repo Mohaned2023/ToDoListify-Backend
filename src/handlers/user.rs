@@ -171,6 +171,19 @@ pub async fn update_information(
     }
 }
 
-pub async fn update_password() {}
+pub async fn update_password(
+    Extension(user): Extension<modules::user::User>,
+    Json(update_pass_dto): Json<modules::user::UpdatePasswordDto>
+) -> impl IntoResponse {
+    let updated_result = services::user::update_password(
+        update_pass_dto, 
+        user, 
+        &get_pool().await
+    ).await;
+    match updated_result {
+        Ok( () ) => return (StatusCode::OK).into_response(),
+        Err(e) => return e.into_response()
+    }
+}
 
 pub async fn delete() {}
