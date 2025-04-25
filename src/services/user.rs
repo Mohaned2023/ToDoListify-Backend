@@ -14,6 +14,7 @@ use crate::{
     modules::user::{
         CreateDto, 
         LoginDto, 
+        UpdateInformationDto, 
         User
     }
 };
@@ -108,6 +109,75 @@ pub async fn login(
                 error!("{:#?}", other);
                 return Err(AppError::InternalServer)
             }
+        }
+    }
+}
+
+pub async fn update_information(
+    update_info_dto: UpdateInformationDto,
+    user: User,
+    pool: &Pool<Postgres>
+) -> Result<User, AppError> {
+    let mut _email: String = user.email.clone();
+    let mut _name: String = user.name.clone();
+    let mut _username: String = user.username.clone();
+
+    if update_info_dto.email.is_some() {
+        _email = update_info_dto.email.unwrap();
+    }
+    if update_info_dto.name.is_some() {
+        _name = update_info_dto.name.unwrap();
+    }
+    if update_info_dto.username.is_some() {
+        _username = update_info_dto.username.unwrap();
+    }
+
+    if  _name     == user.name  &&
+        _email    == user.email &&
+        _username == user.username {
+        return Err(AppError::BadRequest);
+    }
+
+    let user = sqlx::query_as::<_, User>(r#"
+        UPDATE users
+        SET 
+            email     = $1,
+            name      = $2,
+            username  = $3,
+            update_at = CURRENT_TIMESTAMP
+        WHERE
+            id = $4
+        RETURNING 
+            id, 
+            name, 
+            email, 
+            username,
+            password,
+            to_char(create_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as create_at, 
+            to_char(update_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as update_at
+    "#)
+        .bind(_email)
+        .bind(_name)
+        .bind(_username)
+        .bind(user.id)
+        .fetch_one(pool)
+        .await;
+    match user {
+        Ok(data) => return Ok(data),
+        Err(e) => match e {
+            sqlx::Error::Database(db_err) => {
+                if let Some(err_code) = db_err.code() {
+                    if err_code == "23505" {
+                        return Err(AppError::UserFound);
+                    }
+                }
+                error!("{:#?}", db_err);
+                return Err(AppError::InternalServer);
+            }
+            _ => {
+                error!("{:#?}", e);
+                return Err(AppError::InternalServer)
+            },
         }
     }
 }

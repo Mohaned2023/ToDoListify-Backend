@@ -44,18 +44,34 @@ pub struct LoginDto {
     pub password: String
 }
 
+#[derive(Validate, Deserialize)]
+pub struct UpdateInformationDto {
+    #[validate(length(min=2, max=255, message="min=2 && max=255"))]
+    pub name: Option<String>,
+
+    #[validate(custom(function = "username_validate"))]
+    pub username: Option<String>,
+
+    #[validate(
+        length(min=5, max=255, message="min=2 && max=255"),
+        email
+    )]
+    pub email: Option<String>
+}
+
 fn username_validate(username: &str) -> Result<(), ValidationError> {
     if username.len() < 3 || username.len() > 255 {
         return Err(ValidationError::new("min=8 && max=512"));
     }
+    let error_match: Result<(), ValidationError> = Err(ValidationError::new("User name not matches!"));
     let pattren: Regex = Regex::new(r"([a-z0-9_]+)").unwrap();
-    if pattren.captures(username)
-        .unwrap()
-        .get(0)
-        .unwrap()
-        .as_str()
-        .len() != username.len() {
-        return Err(ValidationError::new("User name not matches!"));
+    let check_result = pattren.captures(username);
+    if check_result.is_none() {
+        return error_match;
+    }
+    let get_match_result = check_result.unwrap().get(0);
+    if get_match_result.is_none() || get_match_result.unwrap().as_str().len() != username.len() {
+        return error_match;
     }
     Ok(())
 }

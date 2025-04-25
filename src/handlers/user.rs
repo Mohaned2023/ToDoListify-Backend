@@ -128,7 +128,48 @@ pub async fn logout(
     }
 }
 
-pub async fn update_information() {}
+pub async fn update_information(
+    Extension(user): Extension<modules::user::User>,
+    Json(update_info_dto): Json<modules::user::UpdateInformationDto>,
+) -> impl IntoResponse {
+    if let Err(e) = update_info_dto.validate() {
+        return error::AppError::ValidationError(e.to_string()).into_response();
+    }
+    if  update_info_dto.email.is_none() &&
+        update_info_dto.name.is_none()  &&
+        update_info_dto.username.is_none() {
+        return error::AppError::BadRequest.into_response();
+    }
+    let pool = get_pool().await;
+    let updated_result = services::user::update_information(
+        update_info_dto, 
+        user, 
+        &pool
+    ).await;
+    match updated_result {
+        Ok(user) => {
+            let session_result = services::auth::create_session(
+                &user.username, 
+                user.id, 
+                &pool
+            ).await;
+            match session_result {
+                Ok(session) => {
+                    let mut header = HeaderMap::new();
+                    header.insert(
+                        axum::http::header::SET_COOKIE,
+                        HeaderValue::from_str(
+                            &services::auth::build_cookie(session)
+                        ).unwrap()
+                    );
+                    return (StatusCode::CREATED, header, Json(user)).into_response()
+                }
+                Err(e) => return e.into_response()
+            }
+        }
+        Err(e) => return e.into_response()
+    }
+}
 
 pub async fn update_password() {}
 
