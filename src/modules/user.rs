@@ -71,6 +71,12 @@ pub struct UpdatePasswordDto {
     pub confirmation: String,
 }
 
+#[derive(Validate, Deserialize)]
+pub struct DeleteDto {
+    #[validate(custom( function = "password_validate"))]
+    pub password: String,
+}
+
 fn username_validate(username: &str) -> Result<(), ValidationError> {
     if username.len() < 3 || username.len() > 255 {
         return Err(ValidationError::new("min=8 && max=512"));

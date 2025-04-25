@@ -175,6 +175,9 @@ pub async fn update_password(
     Extension(user): Extension<modules::user::User>,
     Json(update_pass_dto): Json<modules::user::UpdatePasswordDto>
 ) -> impl IntoResponse {
+    if let Err(e) = update_pass_dto.validate() {
+        return error::AppError::ValidationError(e.to_string()).into_response();
+    }
     let updated_result = services::user::update_password(
         update_pass_dto, 
         user, 
@@ -186,4 +189,29 @@ pub async fn update_password(
     }
 }
 
-pub async fn delete() {}
+pub async fn delete(
+    Extension(user): Extension<modules::user::User>,
+    Json(delete_dto): Json<modules::user::DeleteDto>
+) -> impl IntoResponse {
+    if let Err(e) = delete_dto.validate() {
+        return error::AppError::ValidationError(e.to_string()).into_response();
+    }
+    let delete_result = services::user::delete(
+        delete_dto, 
+        user, 
+        &get_pool().await
+    ).await;
+    match delete_result {
+        Ok(()) => {
+            let mut header = HeaderMap::new();
+            header.insert(
+                axum::http::header::SET_COOKIE,
+                HeaderValue::from_str(
+                    &services::auth::build_deleted_cookie()
+                ).unwrap()
+            );
+            return (StatusCode::OK, header).into_response();
+        }
+        Err(e) => return e.into_response()
+    }
+}

@@ -8,11 +8,12 @@ use argon2::{
     PasswordHasher
 };
 use sqlx::{Pool, Postgres};
-use tracing::error;
+use tracing::{error, info};
 use crate::{
     error::AppError, 
     modules::user::{
         CreateDto, 
+        DeleteDto, 
         LoginDto, 
         UpdateInformationDto, 
         UpdatePasswordDto, 
@@ -222,6 +223,43 @@ pub async fn update_password(
                 return Ok(());
             }
             return Err(AppError::NotFoundUser);
+        }
+        Err(e) => {
+            error!("{:#?}", e);
+            return Err(AppError::InternalServer);
+        }
+    }
+}
+
+pub async fn delete(
+    delete_dto: DeleteDto,
+    user: User,
+    pool: &Pool<Postgres>
+) -> Result<(), AppError> {
+    match PasswordHash::new(&user.password) {
+        Ok(parsed_hash) => {
+            let result = parsed_hash
+                .verify_password(&[&Argon2::default()], delete_dto.password);
+            if result.is_err() {
+                return Err(AppError::Unauthorized);
+            }
+        }
+        Err(e) => {
+            error!("{:#?}", e);
+            return Err(AppError::InternalServer);
+        }
+    }
+    let result = sqlx::query(r#"
+        DELETE FROM users
+        WHERE id = $1;
+    "#)
+        .bind(user.id)
+        .execute(pool)
+        .await;
+    match result {
+        Ok(_) => {
+            info!("user '{}' has been deleted.", user.name);
+            return Ok(())
         }
         Err(e) => {
             error!("{:#?}", e);
