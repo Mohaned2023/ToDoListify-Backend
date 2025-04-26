@@ -88,7 +88,8 @@ pub async fn login(
                 to_char(update_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as update_at
             FROM users
             WHERE 
-                username = $1 
+                username = $1 AND
+                state    = 'active' 
         "#,
     )
         .bind(&login_dto.username)

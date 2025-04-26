@@ -68,7 +68,8 @@ pub async fn get_user_by_session(
                     sessions.data = $1 AND 
                     sessions.expires_at - CURRENT_TIMESTAMP > INTERVAL '0 days'
                 LIMIT 1
-            );
+            ) AND 
+            users.state = 'active' ;
     "#)
         .bind(&session)
         .fetch_one(pool)
