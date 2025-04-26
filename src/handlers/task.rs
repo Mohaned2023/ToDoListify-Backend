@@ -14,7 +14,18 @@ use crate::{
 };
 
 
-pub async fn get_all() {}
+pub async fn get_all(
+    Extension(user): Extension<modules::user::User>
+) -> impl IntoResponse {
+    let get_result = services::task::get_all(
+        user.id, 
+        &get_pool().await
+    ).await;
+    match get_result {
+        Ok(tasks) => return (StatusCode::OK, Json(tasks)).into_response(),
+        Err(e) => return e.into_response()
+    }
+}
 
 pub async fn create(
     Extension(user): Extension<modules::user::User>,

@@ -17,6 +17,7 @@ pub enum AppError {
     NotFoundUser,
     Unauthorized,
     BadRequest,
+    NotFoundData,
 }
 
 impl IntoResponse for AppError {
@@ -28,7 +29,8 @@ impl IntoResponse for AppError {
             AppError::CanNotCreeateSession => (StatusCode::INTERNAL_SERVER_ERROR, "Can NOT create the session!".to_string()),
             AppError::NotFoundUser => (StatusCode::NOT_FOUND, "User NOT found!".to_string()),
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized!".to_string()),
-            AppError::BadRequest => (StatusCode::BAD_REQUEST, "Bad Request".to_string())
+            AppError::BadRequest => (StatusCode::BAD_REQUEST, "Bad Request".to_string()),
+            AppError::NotFoundData => (StatusCode::NOT_FOUND, "Data NOT found!".to_string())
         };
         (
             status,
