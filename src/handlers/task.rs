@@ -1,7 +1,38 @@
+use axum::{
+    http::StatusCode, 
+    response::IntoResponse, 
+    Extension, 
+    Json
+};
+use validator::Validate;
+
+use crate::{
+    error, 
+    modules,
+    services,
+    db::get_pool
+};
+
 
 pub async fn get_all() {}
 
-pub async fn create() {}
+pub async fn create(
+    Extension(user): Extension<modules::user::User>,
+    Json(create_dto): Json<modules::task::CreateDto>
+) -> impl IntoResponse {
+    if let Err(err) = create_dto.validate() {
+        return error::AppError::ValidationError(err.to_string()).into_response();
+    }
+    let create_result = services::task::create(
+        create_dto, 
+        user.id, 
+        &get_pool().await
+    ).await;
+    match create_result {
+        Ok(task) => return (StatusCode::CREATED, Json(task)).into_response(),
+        Err(e) => return e.into_response()
+    };
+}
 
 pub async fn update() {}
 
