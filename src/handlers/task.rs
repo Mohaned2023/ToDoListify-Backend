@@ -1,4 +1,5 @@
 use axum::{
+    extract::Path, 
     http::StatusCode, 
     response::IntoResponse, 
     Extension, 
@@ -45,6 +46,24 @@ pub async fn create(
     };
 }
 
-pub async fn update() {}
+pub async fn update(
+    Path(id): Path<i32>,
+    Extension(user): Extension<modules::user::User>,
+    Json(update_dto): Json<modules::task::UpdateDto>
+) -> impl IntoResponse {
+    if let Err(e) = update_dto.validate() {
+        return error::AppError::ValidationError(e.to_string()).into_response();
+    }
+    let updated_result = services::task::udpate(
+        update_dto, 
+        id, 
+        user.id, 
+        &get_pool().await
+    ).await;
+    match updated_result {
+        Ok(task) => return (StatusCode::OK, Json(task)).into_response(),
+        Err(e) => return e.into_response()
+    }
+}
 
 pub async fn delete() {}

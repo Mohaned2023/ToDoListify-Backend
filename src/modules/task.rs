@@ -41,6 +41,27 @@ pub struct CreateDto {
     pub priority: Option<String>,
 }
 
+#[derive(Validate, Deserialize, Debug)]
+pub struct UpdateDto {
+    #[validate(length(min=1, max=255, message="min=1, max=255"))]
+    pub title: Option<String>,
+
+    #[validate(length(min=1, max=6000, message="min=1, max=6000"))]
+    pub body: Option<String>,
+
+    #[validate(
+        length(min=4, max=11, message="min=4, max=11"),
+        custom(function = "state_validate")
+    )]
+    pub state: Option<String>,
+
+    #[validate(
+        length(min=3, max=6, message="min=3, max=6"),
+        custom(function = "priority_validate")
+    )]
+    pub priority: Option<String>
+}
+
 fn state_validate(state: &str) -> Result<(), ValidationError> {
     if  state != "TO_DO"       &&
         state != "IN_PROGRESS" &&
