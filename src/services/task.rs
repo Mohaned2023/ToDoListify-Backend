@@ -149,3 +149,32 @@ pub async fn udpate(
         }
     }
 }
+
+pub async fn delete(
+    id: i32,
+    user_id: i32,
+    pool: &Pool<Postgres>
+) -> Result<(), AppError> {
+    let result = sqlx::query(r#"
+        DELETE FROM tasks
+        WHERE
+            id      = $1 AND
+            user_id = $2
+    "#)
+        .bind(id)
+        .bind(user_id)
+        .execute(pool)
+        .await;
+    match result {
+        Ok(data) => {
+            if data.rows_affected() > 0 {
+                return Ok(());
+            }
+            return Err(AppError::NotFoundData);
+        }
+        Err(e) => {
+            error!("{:#?}", e);
+            return Err(AppError::InternalServer);
+        }
+    }
+}

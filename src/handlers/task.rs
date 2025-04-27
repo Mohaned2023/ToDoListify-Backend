@@ -66,4 +66,17 @@ pub async fn update(
     }
 }
 
-pub async fn delete() {}
+pub async fn delete(
+    Path(id): Path<i32>,
+    Extension(user): Extension<modules::user::User>
+) -> impl IntoResponse {
+    let deleted_result = services::task::delete(
+        id, 
+        user.id, 
+        &get_pool().await
+    ).await;
+    match deleted_result {
+        Ok(_) => return (StatusCode::OK).into_response(),
+        Err(e) => return e.into_response()
+    }
+}
