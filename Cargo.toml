@@ -2,6 +2,20 @@
 name = "todolistify"
 version = "1.0.0"
 edition = "2024"
+description = "Simple to-do backend written in Rust with Axum and Tokio."
+authors = ["Mohaned Sherhan"]
+license = "MIT"
+repository = "https://github.com/Mohaned2023/ToDoListify-Backend"
+
+[[bin]]
+name = "todolistify"
+path = "src/main.rs"
+
+[profile.release]
+strip = true
+opt-level = "s"
+lto = true
+codegen-units = 1
 
 [dependencies]
 argon2 = "0.5.3"
